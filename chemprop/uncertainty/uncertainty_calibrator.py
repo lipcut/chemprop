@@ -10,7 +10,10 @@ from sklearn.isotonic import IsotonicRegression
 
 from chemprop.data import MoleculeDataset, StandardScaler
 from chemprop.models import MoleculeModel
-from chemprop.uncertainty.uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredictor
+from chemprop.uncertainty.uncertainty_predictor import (
+    build_uncertainty_predictor,
+    UncertaintyPredictor,
+)
 
 
 class UncertaintyCalibrator(ABC):
@@ -79,11 +82,14 @@ class UncertaintyCalibrator(ABC):
             raise NotImplementedError(
                 "No uncertainty calibrators are implemented for the spectra dataset type."
             )
-        if self.uncertainty_method in ['ensemble', 'dropout'] and self.dataset_type in ['classification', 'multiclass']:
+        if self.uncertainty_method in ["ensemble", "dropout"] and self.dataset_type in [
+            "classification",
+            "multiclass",
+        ]:
             raise NotImplementedError(
-                'Though ensemble and dropout uncertainty methods are available for classification \
+                "Though ensemble and dropout uncertainty methods are available for classification \
                     multiclass dataset types, their outputs are not confidences and are not \
-                    compatible with any implemented calibration methods for classification.'
+                    compatible with any implemented calibration methods for classification."
             )
 
     @abstractmethod
@@ -119,12 +125,15 @@ class ZScalingCalibrator(UncertaintyCalibrator):
     with scaling given by the uncalibrated variance. Method is described
     in https://arxiv.org/abs/1905.11659.
     """
+
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
             label = f"{self.uncertainty_method}_zscaling_stdev"
         else:  # interval
-            label = f"{self.uncertainty_method}_zscaling_{self.interval_percentile}interval"
+            label = (
+                f"{self.uncertainty_method}_zscaling_{self.interval_percentile}interval"
+            )
         return label
 
     def raise_argument_errors(self):
@@ -152,9 +161,10 @@ class ZScalingCalibrator(UncertaintyCalibrator):
             task_zscore = task_errors / np.sqrt(task_vars)
 
             def objective(scaler_value: float):
-                scaled_vars = task_vars * scaler_value ** 2
-                nll = np.log(2 * np.pi * scaled_vars) / 2 \
-                    + (task_errors) ** 2 / (2 * scaled_vars)
+                scaled_vars = task_vars * scaler_value**2
+                nll = np.log(2 * np.pi * scaled_vars) / 2 + (task_errors) ** 2 / (
+                    2 * scaled_vars
+                )
                 return nll.sum()
 
             initial_guess = np.std(task_zscore)
@@ -190,10 +200,9 @@ class ZScalingCalibrator(UncertaintyCalibrator):
             task_preds = preds[task_mask, i]
             task_targets = targets[task_mask, i]
             task_unc = unc_var[task_mask, i]
-            task_nll = (
-                np.log(2 * np.pi * task_unc) / 2
-                + (task_preds - task_targets) ** 2 / (2 * task_unc)
-            )
+            task_nll = np.log(2 * np.pi * task_unc) / 2 + (
+                task_preds - task_targets
+            ) ** 2 / (2 * task_unc)
             nll.append(task_nll.mean())
         return nll
 
@@ -206,12 +215,15 @@ class TScalingCalibrator(UncertaintyCalibrator):
     The scaling value is obtained by minimizing the negative log likelihood
     of the t distribution, including reductio term due to the number of ensemble models sampled.
     """
+
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
             label = f"{self.uncertainty_method}_tscaling_stdev"
         else:  # interval
-            label = f"{self.uncertainty_method}_tscaling_{self.interval_percentile}interval"
+            label = (
+                f"{self.uncertainty_method}_tscaling_{self.interval_percentile}interval"
+            )
         return label
 
     def raise_argument_errors(self):
@@ -306,12 +318,15 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
     The probability density to be used for NLL evaluator for the zelikman interval method is
     approximated here as a histogram function.
     """
+
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
             label = f"{self.uncertainty_method}_zelikman_stdev"
         else:
-            label = f"{self.uncertainty_method}_zelikman_{self.interval_percentile}interval"
+            label = (
+                f"{self.uncertainty_method}_zelikman_{self.interval_percentile}interval"
+            )
         return label
 
     def raise_argument_errors(self):
@@ -343,7 +358,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
                 std_scaling = np.std(symmetric_z, axis=0)
                 self.scaling[i] = std_scaling
             # histogram parameters for nll calculation
-            h_params = np.histogram(task_preds, bins='auto', density=True)
+            h_params = np.histogram(task_preds, bins="auto", density=True)
             self.histogram_parameters.append(h_params)
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
@@ -372,9 +387,7 @@ class ZelikmanCalibrator(UncertaintyCalibrator):
             task_abs_z = np.abs(task_preds - task_targets) / task_stdev
             bin_edges = self.histogram_parameters[i][1]
             bin_magnitudes = self.histogram_parameters[i][0]
-            bin_magnitudes = np.insert(
-                bin_magnitudes, [0, len(bin_magnitudes)], 0
-            )
+            bin_magnitudes = np.insert(bin_magnitudes, [0, len(bin_magnitudes)], 0)
             pred_bins = np.searchsorted(bin_edges, task_abs_z)
             # magnitude adjusted by stdev scale of the distribution and symmetry assumption
             task_likelihood = bin_magnitudes[pred_bins] / task_stdev / 2
@@ -390,6 +403,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
     predictions versus the targets by applying a weighted average across the
     variance predictions of the ensemble. Discussed in https://doi.org/10.1186/s13321-021-00551-x.
     """
+
     @property
     def label(self):
         if self.regression_calibrator_metric == "stdev":
@@ -422,7 +436,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
         )  # shape(models, data, tasks)
         targets = np.array(self.calibration_data.targets(), dtype=float)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
-        self.var_weighting = np.zeros([self.num_models, targets.shape[1]])  # shape(models, tasks)
+        self.var_weighting = np.zeros(
+            [self.num_models, targets.shape[1]]
+        )  # shape(models, tasks)
 
         for i in range(targets.shape[1]):
             task_mask = mask[:, i]
@@ -432,7 +448,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             task_errors = task_preds - task_targets
 
             def objective(scaler_values: np.ndarray):
-                scaler_values = np.reshape(softmax(scaler_values), [-1, 1])  # (models, 1)
+                scaler_values = np.reshape(
+                    softmax(scaler_values), [-1, 1]
+                )  # (models, 1)
                 scaled_vars = np.sum(
                     task_ind_vars * scaler_values, axis=0, keepdims=False
                 )  # shape(data)
@@ -444,7 +462,7 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
             initial_guess = np.ones(self.num_models)
             sol = fmin(objective, initial_guess)
-            self.var_weighting[:,i] = softmax(sol)
+            self.var_weighting[:, i] = softmax(sol)
         if self.regression_calibrator_metric == "stdev":
             self.scaling = 1
         else:  # interval
@@ -452,7 +470,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
 
     def apply_calibration(self, uncal_predictor: UncertaintyPredictor):
         uncal_preds = np.array(uncal_predictor.get_uncal_preds())
-        uncal_individual_vars = np.array(uncal_predictor.get_individual_vars())  # shape(models, data, tasks)
+        uncal_individual_vars = np.array(
+            uncal_predictor.get_individual_vars()
+        )  # shape(models, data, tasks)
         weighted_vars = np.sum(
             uncal_individual_vars * np.expand_dims(self.var_weighting, 1),
             axis=0,
@@ -478,10 +498,9 @@ class MVEWeightingCalibrator(UncertaintyCalibrator):
             task_preds = preds[task_mask, i]
             task_targets = targets[task_mask, i]
             task_unc = unc_var[task_mask, i]
-            task_nll = (
-                np.log(2 * np.pi * task_unc) / 2
-                + (task_preds - task_targets) ** 2 / (2 * task_unc)
-            )
+            task_nll = np.log(2 * np.pi * task_unc) / 2 + (
+                task_preds - task_targets
+            ) ** 2 / (2 * task_unc)
             nll.append(task_nll.mean())
         return nll
 
@@ -491,6 +510,7 @@ class PlattCalibrator(UncertaintyCalibrator):
     A calibration method for classification datasets based on the Platt scaling algorithm.
     As discussed in https://arxiv.org/abs/1706.04599.
     """
+
     @property
     def label(self):
         return f"{self.uncertainty_method}_platt_confidence"
@@ -567,8 +587,14 @@ class PlattCalibrator(UncertaintyCalibrator):
             + np.expand_dims(self.platt_b, axis=0)
         )
         return uncal_preds.tolist(), cal_preds.tolist()
-    
-    def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]], mask: List[List[bool]]):
+
+    def nll(
+        self,
+        preds: List[List[float]],
+        unc: List[List[float]],
+        targets: List[List[float]],
+        mask: List[List[bool]],
+    ):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
@@ -591,6 +617,7 @@ class IsotonicCalibrator(UncertaintyCalibrator):
     function where the range of each transforming bin and its magnitude is learned.
     As discussed in https://arxiv.org/abs/1706.04599.
     """
+
     @property
     def label(self):
         return f"{self.uncertainty_method}_isotonic_confidence"
@@ -631,8 +658,14 @@ class IsotonicCalibrator(UncertaintyCalibrator):
             transpose_cal_preds.append(task_cal)
         cal_preds = np.transpose(transpose_cal_preds)
         return uncal_preds.tolist(), cal_preds.tolist()
-    
-    def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]], mask: List[List[bool]]):
+
+    def nll(
+        self,
+        preds: List[List[float]],
+        unc: List[List[float]],
+        targets: List[List[float]],
+        mask: List[List[bool]],
+    ):
         targets = np.array(targets, dtype=float)
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)
@@ -652,10 +685,11 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
     """
     A multiclass method for classification datasets based on the isotonic regression algorithm.
     In effect, the method transforms incoming uncalibrated confidences using a histogram-like
-    function where the range of each transforming bin and its magnitude is learned. Uses a 
+    function where the range of each transforming bin and its magnitude is learned. Uses a
     one-against-all aggregation scheme for convertering between binary and multiclass classifiers.
     As discussed in https://arxiv.org/abs/1706.04599.
     """
+
     @property
     def label(self):
         return f"{self.uncertainty_method}_isotonic_confidence"
@@ -671,7 +705,9 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         uncal_preds = np.array(
             self.calibration_predictor.get_uncal_preds()
         )  # shape(data, tasks, num_classes)
-        targets = np.array(self.calibration_data.targets(), dtype=float)  # shape(data, tasks)
+        targets = np.array(
+            self.calibration_data.targets(), dtype=float
+        )  # shape(data, tasks)
         mask = np.array(self.calibration_data.mask(), dtype=bool)
         self.num_tasks = targets.shape[1]
         self.num_classes = uncal_preds.shape[2]
@@ -715,7 +751,13 @@ class IsotonicMulticlassCalibrator(UncertaintyCalibrator):
         cal_preds = cal_preds / np.sum(cal_preds, axis=2, keepdims=True)
         return uncal_preds.tolist(), cal_preds.tolist()
 
-    def nll(self, preds: List[List[float]], unc: List[List[float]], targets: List[List[float]], mask: List[List[bool]]):
+    def nll(
+        self,
+        preds: List[List[float]],
+        unc: List[List[float]],
+        targets: List[List[float]],
+        mask: List[List[bool]],
+    ):
         targets = np.array(targets, dtype=int)  # shape(data, tasks)
         mask = np.array(mask, dtype=bool)
         unc = np.array(unc)

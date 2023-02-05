@@ -111,7 +111,9 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
         uncertainties: List[List[float]],
         mask: List[List[bool]],
     ):
-        if self.calibrator is None:  # uncalibrated regression uncertainties are variances
+        if (
+            self.calibrator is None
+        ):  # uncalibrated regression uncertainties are variances
             uncertainties = np.array(uncertainties)
             preds = np.array(preds)
             targets = np.array(targets, dtype=float)
@@ -122,8 +124,9 @@ class NLLRegressionEvaluator(UncertaintyEvaluator):
                 task_unc = uncertainties[task_mask, i]
                 task_preds = preds[task_mask, i]
                 task_targets = targets[task_mask, i]
-                task_nll = np.log(2 * np.pi * task_unc) / 2 \
-                    + (task_preds - task_targets) ** 2 / (2 * task_unc)
+                task_nll = np.log(2 * np.pi * task_unc) / 2 + (
+                    task_preds - task_targets
+                ) ** 2 / (2 * task_unc)
                 nll.append(task_nll.mean())
             return nll
         else:
@@ -161,8 +164,9 @@ class NLLClassEvaluator(UncertaintyEvaluator):
             task_mask = mask[:, i]
             task_unc = uncertainties[task_mask, i]
             task_targets = targets[task_mask, i]
-            task_likelihood = task_unc * task_targets \
-                + (1 - task_unc) * (1 - task_targets)
+            task_likelihood = task_unc * task_targets + (1 - task_unc) * (
+                1 - task_targets
+            )
             task_nll = -1 * np.log(task_likelihood)
             nll.append(task_nll.mean())
         return nll
@@ -344,7 +348,9 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                 if self.calibrator is None:  # starts as a variance
                     root_mean_vars[i, j] = np.sqrt(np.mean(split_unc[j]))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
-                elif self.calibration_method == "tscaling":  # convert back to sample stdev
+                elif (
+                    self.calibration_method == "tscaling"
+                ):  # convert back to sample stdev
                     bin_unc = split_unc[j] / original_scaling[i]
                     bin_var = t.var(df=self.calibrator.num_models - 1, scale=bin_unc)
                     root_mean_vars[i, j] = np.sqrt(np.mean(bin_var))
@@ -352,7 +358,9 @@ class ExpectedNormalizedErrorEvaluator(UncertaintyEvaluator):
                 else:
                     bin_unc = split_unc[j]
                     if self.calibrator.regression_calibrator_metric == "interval":
-                        bin_unc = bin_unc / original_scaling[i] * stdev_scaling[i]  # convert from interval to stdev as needed
+                        bin_unc = (
+                            bin_unc / original_scaling[i] * stdev_scaling[i]
+                        )  # convert from interval to stdev as needed
                     root_mean_vars[i, j] = np.sqrt(np.mean(np.square(bin_unc)))
                     rmses[i, j] = np.sqrt(np.mean(np.square(split_error[j])))
 

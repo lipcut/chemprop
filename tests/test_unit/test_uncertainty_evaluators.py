@@ -30,7 +30,9 @@ def multiclass_metric(request):
 
 @pytest.fixture
 def nll_regression_evaluator():
-    return build_uncertainty_evaluator("nll", None, "ensemble", "regression", "mse", None)
+    return build_uncertainty_evaluator(
+        "nll", None, "ensemble", "regression", "mse", None
+    )
 
 
 @pytest.fixture
@@ -49,7 +51,9 @@ def miscal_regression_evaluator():
 
 @pytest.fixture
 def spearman_evaluator():
-    return build_uncertainty_evaluator("spearman", None, "ensemble", "regression", "mse", None)
+    return build_uncertainty_evaluator(
+        "spearman", None, "ensemble", "regression", "mse", None
+    )
 
 
 # Tests
@@ -57,7 +61,9 @@ def test_build_regression_metric(regression_metric):
     """
     Tests the build_uncertainty_evaluator function's acceptance of the different regression evaluators.
     """
-    assert build_uncertainty_evaluator(regression_metric, None, None, "regression", None, None)
+    assert build_uncertainty_evaluator(
+        regression_metric, None, None, "regression", None, None
+    )
 
 
 def test_build_classification_metric(classification_metric):
@@ -73,7 +79,9 @@ def test_build_multiclass_metric(multiclass_metric):
     """
     Tests the build_uncertainty_evaluator function's acceptance of the different multiclass evaluators.
     """
-    assert build_uncertainty_evaluator(multiclass_metric, None, None, "multiclass", None, None)
+    assert build_uncertainty_evaluator(
+        multiclass_metric, None, None, "multiclass", None, None
+    )
 
 
 @pytest.mark.parametrize("metric", [str(uuid.uuid4()) for _ in range(3)])
@@ -85,8 +93,12 @@ def test_build_unsupported_metrics(metric, dataset_type):
         build_uncertainty_evaluator(metric, None, None, dataset_type, None, None)
 
 
-@pytest.mark.parametrize("targets,preds,uncs,mask,likelihood", [([[0]], [[0]], [[1]], [[1]], [0.3989])])
-def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, mask, likelihood):
+@pytest.mark.parametrize(
+    "targets,preds,uncs,mask,likelihood", [([[0]], [[0]], [[1]], [[1]], [0.3989])]
+)
+def test_nll_regression(
+    nll_regression_evaluator, targets, preds, uncs, mask, likelihood
+):
     """
     Tests the result of the NLL regression UncertaintyEvaluator.
     """
@@ -100,11 +112,15 @@ def test_nll_regression(nll_regression_evaluator, targets, preds, uncs, mask, li
     "targets,preds,uncs,mask,likelihood",
     [([[1]], [[0.8]], [[0.8]], [[1]], [0.8]), ([[0]], [[0.8]], [[0.8]], [[1]], [0.2])],
 )
-def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs, mask, likelihood):
+def test_nll_classificiation(
+    nll_classification_evaluator, targets, preds, uncs, mask, likelihood
+):
     """
     Tests the result of the NLL classification UncertaintyEvaluator.
     """
-    nll_calc = np.array(nll_classification_evaluator.evaluate(targets, preds, uncs, mask))
+    nll_calc = np.array(
+        nll_classification_evaluator.evaluate(targets, preds, uncs, mask)
+    )
     likelihood_calc = np.exp(-1 * nll_calc)
 
     np.testing.assert_array_almost_equal(likelihood, likelihood_calc)
@@ -113,11 +129,25 @@ def test_nll_classificiation(nll_classification_evaluator, targets, preds, uncs,
 @pytest.mark.parametrize(
     "targets,preds,uncs,mask,area_exp",
     [
-        (np.zeros((100, 1)), np.zeros((100, 1)), np.ones((100, 1)), np.full((100, 1), True, dtype=bool), [0.495]),
-        (np.full((100, 1), 100), np.zeros((100, 1)), np.ones((100, 1)), np.full((100, 1), True, dtype=bool), [0.495]),
+        (
+            np.zeros((100, 1)),
+            np.zeros((100, 1)),
+            np.ones((100, 1)),
+            np.full((100, 1), True, dtype=bool),
+            [0.495],
+        ),
+        (
+            np.full((100, 1), 100),
+            np.zeros((100, 1)),
+            np.ones((100, 1)),
+            np.full((100, 1), True, dtype=bool),
+            [0.495],
+        ),
     ],
 )
-def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, mask, area_exp):
+def test_miscal_regression(
+    miscal_regression_evaluator, targets, preds, uncs, mask, area_exp
+):
     """
     Tests the result of the miscalibration_area UncertaintyEvaluator.
     """
@@ -145,7 +175,9 @@ def test_miscal_regression(miscal_regression_evaluator, targets, preds, uncs, ma
         ),
     ],
 )
-def test_spearman_regression(spearman_evaluator, targets, preds, uncs, mask, spearman_exp):
+def test_spearman_regression(
+    spearman_evaluator, targets, preds, uncs, mask, spearman_exp
+):
     """
     Tests the result of the spearman rank correlation UncertaintyEvaluator.
     """

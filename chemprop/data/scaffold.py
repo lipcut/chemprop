@@ -12,7 +12,10 @@ import numpy as np
 from .data import MoleculeDataset, make_mol
 
 
-def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], include_chirality: bool = False) -> str:
+def generate_scaffold(
+    mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]],
+    include_chirality: bool = False,
+) -> str:
     """
     Computes the Bemis-Murcko scaffold for a SMILES string.
 
@@ -21,16 +24,20 @@ def generate_scaffold(mol: Union[str, Chem.Mol, Tuple[Chem.Mol, Chem.Mol]], incl
     :return: The Bemis-Murcko scaffold for the molecule.
     """
     if isinstance(mol, str):
-        mol = make_mol(mol, keep_h = False, add_h = False)
+        mol = make_mol(mol, keep_h=False, add_h=False)
     if isinstance(mol, tuple):
         mol = mol[0]
-    scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol = mol, includeChirality = include_chirality)
+    scaffold = MurckoScaffold.MurckoScaffoldSmiles(
+        mol=mol, includeChirality=include_chirality
+    )
 
     return scaffold
 
 
-def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]]],
-                       use_indices: bool = False) -> Dict[str, Union[Set[str], Set[int]]]:
+def scaffold_to_smiles(
+    mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mol, Chem.Mol]]],
+    use_indices: bool = False,
+) -> Dict[str, Union[Set[str], Set[int]]]:
     """
     Computes the scaffold for each SMILES and returns a mapping from scaffolds to sets of smiles (or indices).
 
@@ -40,7 +47,7 @@ def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mo
     :return: A dictionary mapping each unique scaffold to all SMILES (or indices) which have that scaffold.
     """
     scaffolds = defaultdict(set)
-    for i, mol in tqdm(enumerate(mols), total = len(mols)):
+    for i, mol in tqdm(enumerate(mols), total=len(mols)):
         scaffold = generate_scaffold(mol)
         if use_indices:
             scaffolds[scaffold].add(i)
@@ -50,14 +57,14 @@ def scaffold_to_smiles(mols: Union[List[str], List[Chem.Mol], List[Tuple[Chem.Mo
     return scaffolds
 
 
-def scaffold_split(data: MoleculeDataset,
-                   sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
-                   balanced: bool = False,
-                   key_molecule_index: int = 0,
-                   seed: int = 0,
-                   logger: logging.Logger = None) -> Tuple[MoleculeDataset,
-                                                           MoleculeDataset,
-                                                           MoleculeDataset]:
+def scaffold_split(
+    data: MoleculeDataset,
+    sizes: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+    balanced: bool = False,
+    key_molecule_index: int = 0,
+    seed: int = 0,
+    logger: logging.Logger = None,
+) -> Tuple[MoleculeDataset, MoleculeDataset, MoleculeDataset]:
     r"""
     Splits a :class:`~chemprop.data.MoleculeDataset` by scaffold so that no molecules sharing a scaffold are in different splits.
 
@@ -74,7 +81,11 @@ def scaffold_split(data: MoleculeDataset,
         raise ValueError(f"Invalid train/val/test splits! got: {sizes}")
 
     # Split
-    train_size, val_size, test_size = sizes[0] * len(data), sizes[1] * len(data), sizes[2] * len(data)
+    train_size, val_size, test_size = (
+        sizes[0] * len(data),
+        sizes[1] * len(data),
+        sizes[2] * len(data),
+    )
     train, val, test = [], [], []
     train_scaffold_count, val_scaffold_count, test_scaffold_count = 0, 0, 0
 
@@ -85,7 +96,9 @@ def scaffold_split(data: MoleculeDataset,
     # Seed randomness
     random = Random(seed)
 
-    if balanced:  # Put stuff that's bigger than half the val/test size into train, rest just order randomly
+    if (
+        balanced
+    ):  # Put stuff that's bigger than half the val/test size into train, rest just order randomly
         index_sets = list(scaffold_to_indices.values())
         big_index_sets = []
         small_index_sets = []
@@ -99,9 +112,11 @@ def scaffold_split(data: MoleculeDataset,
         random.shuffle(small_index_sets)
         index_sets = big_index_sets + small_index_sets
     else:  # Sort from largest to smallest scaffold sets
-        index_sets = sorted(list(scaffold_to_indices.values()),
-                            key=lambda index_set: len(index_set),
-                            reverse=True)
+        index_sets = sorted(
+            list(scaffold_to_indices.values()),
+            key=lambda index_set: len(index_set),
+            reverse=True,
+        )
 
     for index_set in index_sets:
         if len(train) + len(index_set) <= train_size:
@@ -115,10 +130,12 @@ def scaffold_split(data: MoleculeDataset,
             test_scaffold_count += 1
 
     if logger is not None:
-        logger.debug(f'Total scaffolds = {len(scaffold_to_indices):,} | '
-                     f'train scaffolds = {train_scaffold_count:,} | '
-                     f'val scaffolds = {val_scaffold_count:,} | '
-                     f'test scaffolds = {test_scaffold_count:,}')
+        logger.debug(
+            f"Total scaffolds = {len(scaffold_to_indices):,} | "
+            f"train scaffolds = {train_scaffold_count:,} | "
+            f"val scaffolds = {val_scaffold_count:,} | "
+            f"test scaffolds = {test_scaffold_count:,}"
+        )
 
     if logger is not None:
         log_scaffold_stats(data, index_sets, logger=logger)
@@ -131,11 +148,13 @@ def scaffold_split(data: MoleculeDataset,
     return MoleculeDataset(train), MoleculeDataset(val), MoleculeDataset(test)
 
 
-def log_scaffold_stats(data: MoleculeDataset,
-                       index_sets: List[Set[int]],
-                       num_scaffolds: int = 10,
-                       num_labels: int = 20,
-                       logger: logging.Logger = None) -> List[Tuple[List[float], List[int]]]:
+def log_scaffold_stats(
+    data: MoleculeDataset,
+    index_sets: List[Set[int]],
+    num_scaffolds: int = 10,
+    num_labels: int = 20,
+    logger: logging.Logger = None,
+) -> List[Tuple[List[float], List[int]]]:
     """
     Logs and returns statistics about counts and average target values in molecular scaffolds.
 
@@ -149,8 +168,10 @@ def log_scaffold_stats(data: MoleculeDataset,
              the first :code:`num_scaffolds` scaffolds, sorted in decreasing order of scaffold frequency.
     """
     if logger is not None:
-        logger.debug('Label averages per scaffold, in decreasing order of scaffold frequency,'
-                     f'capped at {num_scaffolds} scaffolds and {num_labels} labels:')
+        logger.debug(
+            "Label averages per scaffold, in decreasing order of scaffold frequency,"
+            f"capped at {num_scaffolds} scaffolds and {num_labels} labels:"
+        )
 
     stats = []
     index_sets = sorted(index_sets, key=lambda idx_set: len(idx_set), reverse=True)
@@ -159,16 +180,18 @@ def log_scaffold_stats(data: MoleculeDataset,
         targets = np.array([d.targets for d in data_set], dtype=float)
 
         with warnings.catch_warnings():  # Likely warning of empty slice of target has no values besides NaN
-            warnings.simplefilter('ignore', category=RuntimeWarning)
+            warnings.simplefilter("ignore", category=RuntimeWarning)
             target_avgs = np.nanmean(targets, axis=0)[:num_labels]
 
         counts = np.count_nonzero(~np.isnan(targets), axis=0)[:num_labels]
         stats.append((target_avgs, counts))
 
         if logger is not None:
-            logger.debug(f'Scaffold {scaffold_num}')
+            logger.debug(f"Scaffold {scaffold_num}")
             for task_num, (target_avg, count) in enumerate(zip(target_avgs, counts)):
-                logger.debug(f'Task {task_num}: count = {count:,} | target average = {target_avg:.6f}')
-            logger.debug('\n')
+                logger.debug(
+                    f"Task {task_num}: count = {count:,} | target average = {target_avg:.6f}"
+                )
+            logger.debug("\n")
 
     return stats

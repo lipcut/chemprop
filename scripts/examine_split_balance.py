@@ -5,19 +5,32 @@ import sys
 from typing_extensions import Literal
 
 import numpy as np
-from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+from tap import (
+    Tap,
+)  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from chemprop.data import get_data, MoleculeDataset
 
 
-BASE = '/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data'
-DATASETS = ['pcba', 'muv', 'hiv', 'bace', 'bbbp', 'tox21', 'toxcast', 'sider', 'clintox', 'chembl']
+BASE = "/data/rsg/chemistry/yangk/lsc_experiments_dump_splits/data"
+DATASETS = [
+    "pcba",
+    "muv",
+    "hiv",
+    "bace",
+    "bbbp",
+    "tox21",
+    "toxcast",
+    "sider",
+    "clintox",
+    "chembl",
+]
 
 
 class Args(Tap):
-    split_type: Literal['random', 'scaffold']  # Split type
+    split_type: Literal["random", "scaffold"]  # Split type
 
 
 def compute_ratios(data: MoleculeDataset) -> np.ndarray:
@@ -32,7 +45,7 @@ def examine_split_balance(split_type: str):
 
     for dataset in DATASETS:
         # Load task names for the dataset
-        data_path = os.path.join(BASE, dataset, f'{dataset}.csv')
+        data_path = os.path.join(BASE, dataset, f"{dataset}.csv")
         data = get_data(data_path)
 
         # Get class balance ratios for full dataset
@@ -44,7 +57,12 @@ def examine_split_balance(split_type: str):
         # Loop through folds
         for fold in os.listdir(os.path.join(BASE, dataset, split_type)):
             # Open fold indices
-            with open(os.path.join(BASE, dataset, split_type, fold, '0', 'split_indices.pckl'), 'rb') as f:
+            with open(
+                os.path.join(
+                    BASE, dataset, split_type, fold, "0", "split_indices.pckl"
+                ),
+                "rb",
+            ) as f:
                 indices = pickle.load(f)
 
             # Get test data
@@ -74,18 +92,20 @@ def examine_split_balance(split_type: str):
         mean, std = np.nanmean(ratio_diffs), np.nanstd(ratio_diffs)
 
         # Add results
-        results.append({
-            'dataset': dataset,
-            'mean': mean,
-            'std': std,
-            'num_folds': num_folds,
-            'num_failures': num_failures
-        })
+        results.append(
+            {
+                "dataset": dataset,
+                "mean": mean,
+                "std": std,
+                "num_folds": num_folds,
+                "num_failures": num_failures,
+            }
+        )
 
     pprint(results)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = Args().parse_args()
 
     examine_split_balance(args.split_type)

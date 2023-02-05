@@ -3,5 +3,5 @@
 
 from chemprop.train import chemprop_fingerprint
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     chemprop_fingerprint()

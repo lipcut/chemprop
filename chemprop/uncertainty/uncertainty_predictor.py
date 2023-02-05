@@ -15,6 +15,7 @@ class UncertaintyPredictor(ABC):
     A class for making model predictions and associated predictions of
     prediction uncertainty according to the chosen uncertainty method.
     """
+
     def __init__(
         self,
         test_data: MoleculeDataset,
@@ -109,6 +110,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
     Class that is used for predictions when no uncertainty method is selected.
     Model value predictions are made as normal but uncertainty output only returns "nan".
     """
+
     @property
     def label(self):
         return "no_uncertainty_method"
@@ -160,7 +162,9 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
             else:
                 sum_preds += np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
 
         self.uncal_preds = (sum_preds / self.num_models).tolist()
         uncal_vars = np.zeros_like(sum_preds)
@@ -168,7 +172,7 @@ class NoUncertaintyPredictor(UncertaintyPredictor):
         self.uncal_vars = uncal_vars
         if self.individual_ensemble_predictions:
             self.individual_preds = individual_preds.tolist()
-        
+
     def get_uncal_output(self):
         return self.uncal_vars
 
@@ -178,8 +182,9 @@ class RoundRobinSpectraPredictor(UncertaintyPredictor):
     A class predicting uncertainty for spectra outputs from an ensemble of models. Output is
     the average SID calculated pairwise between each of the individual spectrum predictions.
     """
+
     @property
-    def label(self): 
+    def label(self):
         return "roundrobin_sid"
 
     def raise_argument_errors(self):
@@ -252,9 +257,10 @@ class MVEPredictor(UncertaintyPredictor):
     Class that uses the variance output of the mve loss function (aka heteroscedastic loss)
     as a prediction uncertainty.
     """
+
     @property
-    def label(self): 
-        return"mve_uncal_var"
+    def label(self):
+        return "mve_uncal_var"
 
     def raise_argument_errors(self):
         super().raise_argument_errors()
@@ -309,11 +315,14 @@ class MVEPredictor(UncertaintyPredictor):
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
 
         uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models \
-            - np.square(sum_preds / self.num_models)
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+            sum_preds / self.num_models
+        )
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
         self.individual_vars = individual_vars
         if self.individual_ensemble_predictions:
@@ -328,8 +337,9 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
     Uses the evidential loss function to calculate total uncertainty variance from
     ancilliary loss function outputs. As presented in https://doi.org/10.1021/acscentsci.1c00546.
     """
+
     @property
-    def label(self): 
+    def label(self):
         return "evidential_total_uncal_var"
 
     def raise_argument_errors(self):
@@ -376,11 +386,7 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 scaler=scaler,
                 return_unc_parameters=True,
             )
-            var = (
-                np.array(betas)
-                * (1 + 1 / np.array(lambdas))
-                / (np.array(alphas) - 1)
-            )
+            var = np.array(betas) * (1 + 1 / np.array(lambdas)) / (np.array(alphas) - 1)
             if i == 0:
                 sum_preds = np.array(preds)
                 sum_squared = np.square(preds)
@@ -394,11 +400,14 @@ class EvidentialTotalPredictor(UncertaintyPredictor):
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
 
         uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models \
-            - np.square(sum_preds / self.num_models)
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+            sum_preds / self.num_models
+        )
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
         self.individual_vars = individual_vars
         if self.individual_ensemble_predictions:
@@ -413,8 +422,9 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
     Uses the evidential loss function to calculate aleatoric uncertainty variance from
     ancilliary loss function outputs. As presented in https://doi.org/10.1021/acscentsci.1c00546.
     """
+
     @property
-    def label(self): 
+    def label(self):
         return "evidential_aleatoric_uncal_var"
 
     def raise_argument_errors(self):
@@ -475,11 +485,14 @@ class EvidentialAleatoricPredictor(UncertaintyPredictor):
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
 
         uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models \
-            - np.square(sum_preds / self.num_models)
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+            sum_preds / self.num_models
+        )
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
         self.individual_vars = individual_vars
         if self.individual_ensemble_predictions:
@@ -494,8 +507,9 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
     Uses the evidential loss function to calculate epistemic uncertainty variance from
     ancilliary loss function outputs. As presented in https://doi.org/10.1021/acscentsci.1c00546.
     """
+
     @property
-    def label(self): 
+    def label(self):
         return "evidential_epistemic_uncal_var"
 
     def raise_argument_errors(self):
@@ -556,11 +570,14 @@ class EvidentialEpistemicPredictor(UncertaintyPredictor):
                 sum_vars += np.array(var)
                 individual_vars.append(var)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
 
         uncal_preds = sum_preds / self.num_models
-        uncal_vars = (sum_vars + sum_squared) / self.num_models \
-            - np.square(sum_preds / self.num_models)
+        uncal_vars = (sum_vars + sum_squared) / self.num_models - np.square(
+            sum_preds / self.num_models
+        )
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
         self.individual_vars = individual_vars
         if self.individual_ensemble_predictions:
@@ -575,8 +592,9 @@ class EnsemblePredictor(UncertaintyPredictor):
     Class that predicts uncertainty for predictions based on the variance in predictions among
     an ensemble's submodels.
     """
+
     @property
-    def label(self): 
+    def label(self):
         return "ensemble_uncal_var"
 
     def raise_argument_errors(self):
@@ -636,13 +654,16 @@ class EnsemblePredictor(UncertaintyPredictor):
                 sum_preds += np.array(preds)
                 sum_squared += np.square(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
                 if model.train_class_sizes is not None:
                     self.train_class_sizes.append(model.train_class_sizes)
 
         uncal_preds = sum_preds / self.num_models
-        uncal_vars = sum_squared / self.num_models \
-            - np.square(sum_preds) / self.num_models ** 2
+        uncal_vars = (
+            sum_squared / self.num_models - np.square(sum_preds) / self.num_models**2
+        )
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
         if self.individual_ensemble_predictions:
             self.individual_preds = individual_preds.tolist()
@@ -657,8 +678,9 @@ class DropoutPredictor(UncertaintyPredictor):
     model parameters. Predicts uncertainty for predictions based on the variance in predictions among
     an ensemble's submodels.
     """
+
     @property
-    def label(self): 
+    def label(self):
         return "dropout_uncal_var"
 
     def raise_argument_errors(self):
@@ -708,8 +730,10 @@ class DropoutPredictor(UncertaintyPredictor):
                 sum_squared += np.square(preds)
 
         uncal_preds = sum_preds / self.dropout_sampling_size
-        uncal_vars = sum_squared / self.dropout_sampling_size \
-            - np.square(sum_preds) / self.dropout_sampling_size ** 2
+        uncal_vars = (
+            sum_squared / self.dropout_sampling_size
+            - np.square(sum_preds) / self.dropout_sampling_size**2
+        )
         self.uncal_preds, self.uncal_vars = uncal_preds.tolist(), uncal_vars.tolist()
 
     def get_uncal_output(self):
@@ -718,12 +742,12 @@ class DropoutPredictor(UncertaintyPredictor):
 
 class ClassPredictor(UncertaintyPredictor):
     """
-    Class uses the [0,1] range of results from classification or multiclass models 
+    Class uses the [0,1] range of results from classification or multiclass models
     as the indicator of confidence. Used for classification and multiclass dataset types.
     """
 
     @property
-    def label(self): 
+    def label(self):
         return "classification_uncal_confidence"
 
     def raise_argument_errors(self):
@@ -775,7 +799,9 @@ class ClassPredictor(UncertaintyPredictor):
             else:
                 sum_preds += np.array(preds)
                 if self.individual_ensemble_predictions:
-                    individual_preds = np.append(individual_preds, np.expand_dims(preds, axis=-1), axis=-1)
+                    individual_preds = np.append(
+                        individual_preds, np.expand_dims(preds, axis=-1), axis=-1
+                    )
                 if model.train_class_sizes is not None:
                     self.train_class_sizes.append(model.train_class_sizes)
 

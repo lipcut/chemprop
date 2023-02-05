@@ -151,8 +151,18 @@ def test_mve(preds, targets, likelihood):
 @pytest.mark.parametrize(
     "alphas,target_labels,lam,expected_loss",
     [
-        (torch.tensor([[2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0, [[0.6]]),
-        (torch.tensor([[2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0.2, [[0.63862943]]),
+        (
+            torch.tensor([[2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
+            0,
+            [[0.6]],
+        ),
+        (
+            torch.tensor([[2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
+            0.2,
+            [[0.63862943]],
+        ),
     ],
 )
 def test_dirichlet(alphas, target_labels, lam, expected_loss):
@@ -186,8 +196,18 @@ def test_dirichlet_wrong_dimensions(alphas, target_labels):
 @pytest.mark.parametrize(
     "alphas,targets,lam,expected_loss",
     [
-        (torch.tensor([[2, 2, 2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0, [[1.56893861]]),
-        (torch.tensor([[2, 2, 2, 2]], dtype=float), torch.ones([1, 1], dtype=float), 0.2, [[2.768938541]]),
+        (
+            torch.tensor([[2, 2, 2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
+            0,
+            [[1.56893861]],
+        ),
+        (
+            torch.tensor([[2, 2, 2, 2]], dtype=float),
+            torch.ones([1, 1], dtype=float),
+            0.2,
+            [[2.768938541]],
+        ),
     ],
 )
 def test_evidential(alphas, targets, lam, expected_loss):
@@ -222,35 +242,45 @@ def test_evidential_wrong_dimensions(alphas, targets):
     "predictions,targets,data_weights,mask,expected_loss",
     [
         (
-            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor(
+                [[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float
+            ),
             torch.tensor([0, 0, 0], dtype=int),
             torch.tensor([[1], [1], [1]], dtype=float),
             torch.tensor([True, True, True], dtype=bool),
             1 - 0.0,
         ),
         (
-            torch.tensor([[0.8, 0.1, 0.1], [0.7, 0.2, 0.1], [0.6, 0.3, 0.1]], dtype=float),
+            torch.tensor(
+                [[0.8, 0.1, 0.1], [0.7, 0.2, 0.1], [0.6, 0.3, 0.1]], dtype=float
+            ),
             torch.tensor([1, 2, 0], dtype=int),
             torch.tensor([[1], [1], [1]], dtype=float),
             torch.tensor([True, True, True], dtype=bool),
             1 - 0.0,
         ),
         (
-            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor(
+                [[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float
+            ),
             torch.tensor([2, 0, 2], dtype=int),
             torch.tensor([[1], [1], [1]], dtype=float),
             torch.tensor([True, True, True], dtype=bool),
             1 - 0.6123724356957946,
         ),
         (
-            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor(
+                [[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float
+            ),
             torch.tensor([2, 0, 2], dtype=int),
             torch.tensor([[0.5], [1], [1.5]], dtype=float),
             torch.tensor([True, True, True], dtype=bool),
             1 - 0.7462025072446364,
         ),
         (
-            torch.tensor([[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float),
+            torch.tensor(
+                [[0.2, 0.7, 0.1], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]], dtype=float
+            ),
             torch.tensor([2, 0, 2], dtype=int),
             torch.tensor([[1], [1], [1]], dtype=float),
             torch.tensor([False, True, True], dtype=bool),

@@ -5,25 +5,50 @@ from typing import List, Optional, Union, Tuple
 import numpy as np
 
 from chemprop.args import PredictArgs, TrainArgs
-from chemprop.data import get_data, get_data_from_smiles, MoleculeDataLoader, MoleculeDataset, StandardScaler
-from chemprop.utils import load_args, load_checkpoint, load_scalers, makedirs, timeit, update_prediction_args
-from chemprop.features import set_extra_atom_fdim, set_extra_bond_fdim, set_reaction, set_explicit_h, set_adding_hs, reset_featurization_parameters
+from chemprop.data import (
+    get_data,
+    get_data_from_smiles,
+    MoleculeDataLoader,
+    MoleculeDataset,
+    StandardScaler,
+)
+from chemprop.utils import (
+    load_args,
+    load_checkpoint,
+    load_scalers,
+    makedirs,
+    timeit,
+    update_prediction_args,
+)
+from chemprop.features import (
+    set_extra_atom_fdim,
+    set_extra_bond_fdim,
+    set_reaction,
+    set_explicit_h,
+    set_adding_hs,
+    reset_featurization_parameters,
+)
 from chemprop.models import MoleculeModel
-from chemprop.uncertainty import UncertaintyCalibrator, build_uncertainty_calibrator, UncertaintyEstimator, build_uncertainty_evaluator
+from chemprop.uncertainty import (
+    UncertaintyCalibrator,
+    build_uncertainty_calibrator,
+    UncertaintyEstimator,
+    build_uncertainty_evaluator,
+)
 
 
 def load_model(args: PredictArgs, generator: bool = False):
     """
-    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler 
+    Function to load a model or ensemble of models from file. If generator is True, a generator of the respective model and scaler
     objects is returned (memory efficient), else the full list (holding all models in memory, necessary for preloading).
 
     :param args: A :class:`~chemprop.args.PredictArgs` object containing arguments for
                  loading data and a model and making predictions.
     :param generator: A boolean to return a generator instead of a list of models and scalers.
-    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or 
+    :return: A tuple of updated prediction arguments, training arguments, a list or generator object of models, a list or
                  generator object of scalers, the number of tasks and their respective names.
     """
-    print('Loading training args')
+    print("Loading training args")
     train_args = load_args(args.checkpoint_paths[0])
     num_tasks, task_names = train_args.num_tasks, train_args.task_names
 
@@ -32,7 +57,8 @@ def load_model(args: PredictArgs, generator: bool = False):
 
     # Load model and scalers
     models = (
-        load_checkpoint(checkpoint_path, device=args.device) for checkpoint_path in args.checkpoint_paths
+        load_checkpoint(checkpoint_path, device=args.device)
+        for checkpoint_path in args.checkpoint_paths
     )
     scalers = (
         load_scalers(checkpoint_path) for checkpoint_path in args.checkpoint_paths
@@ -213,7 +239,10 @@ def predict_and_save(
         print(f"Evaluating uncertainty for tasks {task_names}")
         for evaluator in evaluators:
             evaluation = evaluator.evaluate(
-                targets=evaluation_data.targets(), preds=preds, uncertainties=unc, mask=evaluation_data.mask()
+                targets=evaluation_data.targets(),
+                preds=preds,
+                uncertainties=unc,
+                mask=evaluation_data.mask(),
             )
             evaluations.append(evaluation)
             print(
@@ -256,7 +285,9 @@ def predict_and_save(
                 d_preds = ["Invalid SMILES"] * num_tasks
                 d_unc = ["Invalid SMILES"] * num_unc_tasks
                 if args.individual_ensemble_predictions:
-                    ind_preds = [["Invalid SMILES"] * len(args.checkpoint_paths)] * num_tasks
+                    ind_preds = [
+                        ["Invalid SMILES"] * len(args.checkpoint_paths)
+                    ] * num_tasks
             # Reshape multiclass to merge task and class dimension, with updated num_tasks
             if args.dataset_type == "multiclass":
                 d_preds = np.array(d_preds).reshape((num_tasks))
@@ -392,12 +423,15 @@ def make_predictions(
         args, smiles
     )
 
-    if args.uncertainty_method is None and (args.calibration_method is not None or args.evaluation_methods is not None):
-        if args.dataset_type in ['classification', 'multiclass']:
-            args.uncertainty_method = 'classification'
+    if args.uncertainty_method is None and (
+        args.calibration_method is not None or args.evaluation_methods is not None
+    ):
+        if args.dataset_type in ["classification", "multiclass"]:
+            args.uncertainty_method = "classification"
         else:
-            raise ValueError('Cannot calibrate or evaluate uncertainty without selection of an uncertainty method.')
-
+            raise ValueError(
+                "Cannot calibrate or evaluate uncertainty without selection of an uncertainty method."
+            )
 
     if calibrator is None and args.calibration_path is not None:
 

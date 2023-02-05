@@ -8,14 +8,16 @@ from chemprop.models import MoleculeModel
 from chemprop.train import get_metric_func
 
 
-def evaluate_predictions(preds: List[List[float]],
-                         targets: List[List[float]],
-                         num_tasks: int,
-                         metrics: List[str],
-                         dataset_type: str,
-                         gt_targets: List[List[bool]] = None,
-                         lt_targets: List[List[bool]] = None,
-                         logger: logging.Logger = None) -> Dict[str, List[float]]:
+def evaluate_predictions(
+    preds: List[List[float]],
+    targets: List[List[float]],
+    num_tasks: int,
+    metrics: List[str],
+    dataset_type: str,
+    gt_targets: List[List[bool]] = None,
+    lt_targets: List[List[bool]] = None,
+    logger: logging.Logger = None,
+) -> Dict[str, List[float]]:
     """
     Evaluates predictions using a metric function after filtering out invalid targets.
 
@@ -34,11 +36,11 @@ def evaluate_predictions(preds: List[List[float]],
     metric_to_func = {metric: get_metric_func(metric) for metric in metrics}
 
     if len(preds) == 0:
-        return {metric: [float('nan')] * num_tasks for metric in metrics}
+        return {metric: [float("nan")] * num_tasks for metric in metrics}
 
     # Filter out empty targets for most data types, excluding dataset_type spectra
     # valid_preds and valid_targets have shape (num_tasks, data_size)
-    if dataset_type != 'spectra':
+    if dataset_type != "spectra":
         valid_preds = [[] for _ in range(num_tasks)]
         valid_targets = [[] for _ in range(num_tasks)]
         for i in range(num_tasks):
@@ -49,50 +51,70 @@ def evaluate_predictions(preds: List[List[float]],
 
     # Compute metric. Spectra loss calculated for all tasks together, others calculated for tasks individually.
     results = defaultdict(list)
-    if dataset_type == 'spectra':
+    if dataset_type == "spectra":
         for metric, metric_func in metric_to_func.items():
             results[metric].append(metric_func(preds, targets))
     else:
         for i in range(num_tasks):
             # # Skip if all targets or preds are identical, otherwise we'll crash during classification
-            if dataset_type == 'classification':
+            if dataset_type == "classification":
                 nan = False
-                if all(target == 0 for target in valid_targets[i]) or all(target == 1 for target in valid_targets[i]):
+                if all(target == 0 for target in valid_targets[i]) or all(
+                    target == 1 for target in valid_targets[i]
+                ):
                     nan = True
-                    info('Warning: Found a task with targets all 0s or all 1s')
-                if all(pred == 0 for pred in valid_preds[i]) or all(pred == 1 for pred in valid_preds[i]):
+                    info("Warning: Found a task with targets all 0s or all 1s")
+                if all(pred == 0 for pred in valid_preds[i]) or all(
+                    pred == 1 for pred in valid_preds[i]
+                ):
                     nan = True
-                    info('Warning: Found a task with predictions all 0s or all 1s')
+                    info("Warning: Found a task with predictions all 0s or all 1s")
 
                 if nan:
                     for metric in metrics:
-                        results[metric].append(float('nan'))
+                        results[metric].append(float("nan"))
                     continue
 
             if len(valid_targets[i]) == 0:
                 continue
 
             for metric, metric_func in metric_to_func.items():
-                if dataset_type == 'multiclass' and metric == 'cross_entropy':
-                    results[metric].append(metric_func(valid_targets[i], valid_preds[i],
-                                                    labels=list(range(len(valid_preds[i][0])))))
-                elif metric in ['bounded_rmse', 'bounded_mse', 'bounded_mae']:
-                    results[metric].append(metric_func(valid_targets[i], valid_preds[i], gt_targets[i], lt_targets[i]))
+                if dataset_type == "multiclass" and metric == "cross_entropy":
+                    results[metric].append(
+                        metric_func(
+                            valid_targets[i],
+                            valid_preds[i],
+                            labels=list(range(len(valid_preds[i][0]))),
+                        )
+                    )
+                elif metric in ["bounded_rmse", "bounded_mse", "bounded_mae"]:
+                    results[metric].append(
+                        metric_func(
+                            valid_targets[i],
+                            valid_preds[i],
+                            gt_targets[i],
+                            lt_targets[i],
+                        )
+                    )
                 else:
-                    results[metric].append(metric_func(valid_targets[i], valid_preds[i]))
+                    results[metric].append(
+                        metric_func(valid_targets[i], valid_preds[i])
+                    )
 
     results = dict(results)
 
     return results
 
 
-def evaluate(model: MoleculeModel,
-             data_loader: MoleculeDataLoader,
-             num_tasks: int,
-             metrics: List[str],
-             dataset_type: str,
-             scaler: StandardScaler = None,
-             logger: logging.Logger = None) -> Dict[str, List[float]]:
+def evaluate(
+    model: MoleculeModel,
+    data_loader: MoleculeDataLoader,
+    num_tasks: int,
+    metrics: List[str],
+    dataset_type: str,
+    scaler: StandardScaler = None,
+    logger: logging.Logger = None,
+) -> Dict[str, List[float]]:
     """
     Evaluates an ensemble of models on a dataset by making predictions and then evaluating the predictions.
 
@@ -107,18 +129,14 @@ def evaluate(model: MoleculeModel,
 
     """
     # Inequality targets only need for evaluation of certain regression metrics
-    if any(m in metrics for m in ['bounded_rmse', 'bounded_mse', 'bounded_mae']):
+    if any(m in metrics for m in ["bounded_rmse", "bounded_mse", "bounded_mae"]):
         gt_targets = data_loader.gt_targets
         lt_targets = data_loader.lt_targets
     else:
         gt_targets = None
         lt_targets = None
 
-    preds = predict(
-        model=model,
-        data_loader=data_loader,
-        scaler=scaler
-    )
+    preds = predict(model=model, data_loader=data_loader, scaler=scaler)
 
     results = evaluate_predictions(
         preds=preds,

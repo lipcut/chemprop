@@ -8,8 +8,8 @@ import torch
 
 DEFAULT_USER_ID = 1
 
-SMILES_FILENAME = 'smiles.csv'
-PREDICTIONS_FILENAME = 'predictions.csv'
-DB_FILENAME = 'chemprop.sqlite3'
+SMILES_FILENAME = "smiles.csv"
+PREDICTIONS_FILENAME = "predictions.csv"
+DB_FILENAME = "chemprop.sqlite3"
 CUDA = torch.cuda.is_available()
 GPUS = list(range(torch.cuda.device_count()))

@@ -3,5 +3,5 @@
 from chemprop.sklearn_predict import sklearn_predict
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sklearn_predict()

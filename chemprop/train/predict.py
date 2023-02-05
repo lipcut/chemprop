@@ -30,16 +30,23 @@ def predict(
         it is a tuple of lists of lists, of a length depending on how many uncertainty parameters are appropriate for the loss function.
     """
     model.eval()
-    
+
     # Activate dropout layers to work during inference for uncertainty estimation
     if dropout_prob > 0.0:
+
         def activate_dropout_(model):
             return activate_dropout(model, dropout_prob)
+
         model.apply(activate_dropout_)
 
     preds = []
 
-    var, lambdas, alphas, betas = [], [], [], []  # only used if returning uncertainty parameters
+    var, lambdas, alphas, betas = (
+        [],
+        [],
+        [],
+        [],
+    )  # only used if returning uncertainty parameters
 
     for batch in tqdm(data_loader, disable=disable_progress_bar, leave=False):
         # Prepare batch
@@ -77,7 +84,7 @@ def predict(
                 batch_preds = batch_preds / np.sum(
                     batch_alphas, axis=2, keepdims=True
                 )  # shape(data, tasks, num_classes)
-        elif model.loss_function == 'evidential':  # regression
+        elif model.loss_function == "evidential":  # regression
             batch_preds, batch_lambdas, batch_alphas, batch_betas = np.split(
                 batch_preds, 4, axis=1
             )
@@ -86,9 +93,9 @@ def predict(
         if scaler is not None:
             batch_preds = scaler.inverse_transform(batch_preds)
             if model.loss_function == "mve":
-                batch_var = batch_var * scaler.stds ** 2
+                batch_var = batch_var * scaler.stds**2
             elif model.loss_function == "evidential":
-                batch_betas = batch_betas * scaler.stds ** 2
+                batch_betas = batch_betas * scaler.stds**2
 
         # Collect vectors
         batch_preds = batch_preds.tolist()

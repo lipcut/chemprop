@@ -5,14 +5,16 @@ This allows for training and predicting in a web browser.
 
 import os
 
-from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+from tap import (
+    Tap,
+)  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 from chemprop.web.app import app, db
 from chemprop.web.utils import clear_temp_folder, set_root_folder
 
 
 class WebArgs(Tap):
-    host: str = '127.0.0.1'  # Host IP address
+    host: str = "127.0.0.1"  # Host IP address
     port: int = 5000  # Port
     debug: bool = False  # Whether to run in debug mode
     demo: bool = False  # Display only demo features
@@ -21,19 +23,15 @@ class WebArgs(Tap):
 
 
 def run_web(args: WebArgs) -> None:
-    app.config['DEMO'] = args.demo
+    app.config["DEMO"] = args.demo
 
     # Set up root folder and subfolders
-    set_root_folder(
-        app=app,
-        root_folder=args.root_folder,
-        create_folders=True
-    )
+    set_root_folder(app=app, root_folder=args.root_folder, create_folders=True)
     clear_temp_folder(app=app)
 
     db.init_app(app)
 
-    if args.initdb or not os.path.isfile(app.config['DB_PATH']):
+    if args.initdb or not os.path.isfile(app.config["DB_PATH"]):
         with app.app_context():
             db.init_db()
             print("-- INITIALIZED DATABASE --")

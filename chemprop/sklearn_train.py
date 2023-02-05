@@ -17,10 +17,12 @@ from chemprop.train import cross_validate, evaluate_predictions
 from chemprop.utils import save_smiles_splits
 
 
-def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
-            model_type: str,
-            dataset_type: str,
-            features: List[np.ndarray]) -> List[List[float]]:
+def predict(
+    model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
+    model_type: str,
+    dataset_type: str,
+    features: List[np.ndarray],
+) -> List[List[float]]:
     """
     Predicts using a scikit-learn model.
 
@@ -30,23 +32,25 @@ def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC
     :param features: The data features used as input for the model.
     :return: A list of lists of floats containing the predicted values.
     """
-    if dataset_type == 'regression':
+    if dataset_type == "regression":
         preds = model.predict(features)
 
         if len(preds.shape) == 1:
             preds = [[pred] for pred in preds]
-    elif dataset_type == 'classification':
-        if model_type == 'random_forest':
+    elif dataset_type == "classification":
+        if model_type == "random_forest":
             preds = model.predict_proba(features)
 
             if type(preds) == list:
                 # Multiple tasks
                 num_tasks, num_preds = len(preds), len(preds[0])
-                preds = [[preds[i][j, 1] for i in range(num_tasks)] for j in range(num_preds)]
+                preds = [
+                    [preds[i][j, 1] for i in range(num_tasks)] for j in range(num_preds)
+                ]
             else:
                 # One task
                 preds = [[preds[i, 1]] for i in range(len(preds))]
-        elif model_type == 'svm':
+        elif model_type == "svm":
             preds = model.decision_function(features)
             preds = [[pred] for pred in preds]
         else:
@@ -56,11 +60,14 @@ def predict(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC
 
     return preds
 
-def impute_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
-                   train_data: MoleculeDataset,
-                   args: SklearnTrainArgs,
-                   logger: Logger = None,
-                   threshold: float = 0.5) -> List[float]:
+
+def impute_sklearn(
+    model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
+    train_data: MoleculeDataset,
+    args: SklearnTrainArgs,
+    logger: Logger = None,
+    threshold: float = 0.5,
+) -> List[float]:
     """
     Trains a single-task scikit-learn model, meaning a separate model is trained for each task.
 
@@ -75,64 +82,82 @@ def impute_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, S
     :return: A list of list of target values.
     """
     num_tasks = train_data.num_tasks()
-    new_targets=deepcopy(train_data.targets())
-    
+    new_targets = deepcopy(train_data.targets())
+
     if logger is not None:
         debug = logger.debug
     else:
         debug = print
-        
-    debug('Imputation')
-    
+
+    debug("Imputation")
+
     for task_num in trange(num_tasks):
-        impute_train_features = [features for features, targets in zip(train_data.features(), train_data.targets()) if targets[task_num] is None]
+        impute_train_features = [
+            features
+            for features, targets in zip(train_data.features(), train_data.targets())
+            if targets[task_num] is None
+        ]
         if len(impute_train_features) > 0:
-            train_features, train_targets = zip(*[(features, targets[task_num])
-                                              for features, targets in zip(train_data.features(), train_data.targets())
-                                              if targets[task_num] is not None])
-            if args.impute_mode == 'single_task':
+            train_features, train_targets = zip(
+                *[
+                    (features, targets[task_num])
+                    for features, targets in zip(
+                        train_data.features(), train_data.targets()
+                    )
+                    if targets[task_num] is not None
+                ]
+            )
+            if args.impute_mode == "single_task":
                 model.fit(train_features, train_targets)
                 impute_train_preds = predict(
                     model=model,
                     model_type=args.model_type,
                     dataset_type=args.dataset_type,
-                    features=impute_train_features
+                    features=impute_train_features,
                 )
                 impute_train_preds = [pred[0] for pred in impute_train_preds]
-            elif args.impute_mode == 'median' and args.dataset_type == 'regression':
+            elif args.impute_mode == "median" and args.dataset_type == "regression":
                 impute_train_preds = [np.median(train_targets)] * len(new_targets)
-            elif args.impute_mode == 'mean' and args.dataset_type == 'regression':
+            elif args.impute_mode == "mean" and args.dataset_type == "regression":
                 impute_train_preds = [np.mean(train_targets)] * len(new_targets)
-            elif args.impute_mode == 'frequent' and args.dataset_type == 'classification':
-                impute_train_preds = [np.argmax(np.bincount(train_targets))] * len(new_targets)
-            elif args.impute_mode == 'linear' and args.dataset_type == 'regression':
+            elif (
+                args.impute_mode == "frequent" and args.dataset_type == "classification"
+            ):
+                impute_train_preds = [np.argmax(np.bincount(train_targets))] * len(
+                    new_targets
+                )
+            elif args.impute_mode == "linear" and args.dataset_type == "regression":
                 reg = SGDRegressor(alpha=0.01).fit(train_features, train_targets)
                 impute_train_preds = reg.predict(impute_train_features)
-            elif args.impute_mode == 'linear' and args.dataset_type == 'classification':
+            elif args.impute_mode == "linear" and args.dataset_type == "classification":
                 cls = SGDClassifier().fit(train_features, train_targets)
                 impute_train_preds = cls.predict(impute_train_features)
             else:
-                raise ValueError("Invalid combination of imputation mode and dataset type.")   
+                raise ValueError(
+                    "Invalid combination of imputation mode and dataset type."
+                )
 
-            #Replace targets
+            # Replace targets
             ctr = 0
             for i in range(len(new_targets)):
                 if new_targets[i][task_num] is None:
                     value = impute_train_preds[ctr]
-                    if args.dataset_type == 'classification':
+                    if args.dataset_type == "classification":
                         value = int(value > threshold)
                     new_targets[i][task_num] = value
                     ctr += 1
-                    
+
     return new_targets
 
 
-def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
-                        train_data: MoleculeDataset,
-                        test_data: MoleculeDataset,
-                        metrics: List[str],
-                        args: SklearnTrainArgs,
-                        logger: Logger = None) -> List[float]:
+def single_task_sklearn(
+    model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
+    train_data: MoleculeDataset,
+    test_data: MoleculeDataset,
+    metrics: List[str],
+    args: SklearnTrainArgs,
+    logger: Logger = None,
+) -> List[float]:
     """
     Trains a single-task scikit-learn model, meaning a separate model is trained for each task.
 
@@ -151,12 +176,22 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
     num_tasks = train_data.num_tasks()
     for task_num in trange(num_tasks):
         # Only get features and targets for molecules where target is not None
-        train_features, train_targets = zip(*[(features, targets[task_num])
-                                              for features, targets in zip(train_data.features(), train_data.targets())
-                                              if targets[task_num] is not None])
-        test_features, test_targets = zip(*[(features, targets[task_num])
-                                            for features, targets in zip(test_data.features(), test_data.targets())
-                                            if targets[task_num] is not None])
+        train_features, train_targets = zip(
+            *[
+                (features, targets[task_num])
+                for features, targets in zip(
+                    train_data.features(), train_data.targets()
+                )
+                if targets[task_num] is not None
+            ]
+        )
+        test_features, test_targets = zip(
+            *[
+                (features, targets[task_num])
+                for features, targets in zip(test_data.features(), test_data.targets())
+                if targets[task_num] is not None
+            ]
+        )
 
         model.fit(train_features, train_targets)
 
@@ -164,7 +199,7 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
             model=model,
             model_type=args.model_type,
             dataset_type=args.dataset_type,
-            features=test_features
+            features=test_features,
         )
         test_targets = [[target] for target in test_targets]
 
@@ -174,7 +209,7 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
             num_tasks=1,
             metrics=metrics,
             dataset_type=args.dataset_type,
-            logger=logger
+            logger=logger,
         )
         for metric in metrics:
             if metric not in scores:
@@ -184,12 +219,14 @@ def single_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifi
     return scores
 
 
-def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
-                       train_data: MoleculeDataset,
-                       test_data: MoleculeDataset,
-                       metrics: List[str],
-                       args: SklearnTrainArgs,
-                       logger: Logger = None) -> Dict[str, List[float]]:
+def multi_task_sklearn(
+    model: Union[RandomForestRegressor, RandomForestClassifier, SVR, SVC],
+    train_data: MoleculeDataset,
+    test_data: MoleculeDataset,
+    metrics: List[str],
+    args: SklearnTrainArgs,
+    logger: Logger = None,
+) -> Dict[str, List[float]]:
     """
     Trains a multi-task scikit-learn model, meaning one model is trained simultaneously on all tasks.
 
@@ -209,15 +246,16 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
     train_targets = train_data.targets()
 
     if args.impute_mode:
-        train_targets = impute_sklearn(model=model,
-                                       train_data=train_data,
-                                       args=args,
-                                       logger=logger)
+        train_targets = impute_sklearn(
+            model=model, train_data=train_data, args=args, logger=logger
+        )
     elif any(None in sublist for sublist in train_targets):
-        raise ValueError("Missing target values not tolerated for multi-task sklearn models." 
-                         "Use either --single_task to train multiple single-task models or impute"
-                         " targets via --impute_mode  <model/linear/median/mean/frequent>.")
-        
+        raise ValueError(
+            "Missing target values not tolerated for multi-task sklearn models."
+            "Use either --single_task to train multiple single-task models or impute"
+            " targets via --impute_mode  <model/linear/median/mean/frequent>."
+        )
+
     if train_data.num_tasks() == 1:
         train_targets = [targets[0] for targets in train_targets]
 
@@ -225,14 +263,14 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
     model.fit(train_data.features(), train_targets)
 
     # Save model
-    with open(os.path.join(args.save_dir, 'model.pkl'), 'wb') as f:
+    with open(os.path.join(args.save_dir, "model.pkl"), "wb") as f:
         pickle.dump(model, f)
 
     test_preds = predict(
         model=model,
         model_type=args.model_type,
         dataset_type=args.dataset_type,
-        features=test_data.features()
+        features=test_data.features(),
     )
 
     scores = evaluate_predictions(
@@ -241,15 +279,15 @@ def multi_task_sklearn(model: Union[RandomForestRegressor, RandomForestClassifie
         num_tasks=num_tasks,
         metrics=metrics,
         dataset_type=args.dataset_type,
-        logger=logger
+        logger=logger,
     )
 
     return scores
 
 
-def run_sklearn(args: SklearnTrainArgs,
-                data: MoleculeDataset,
-                logger: Logger = None) -> Dict[str, List[float]]:
+def run_sklearn(
+    args: SklearnTrainArgs, data: MoleculeDataset, logger: Logger = None
+) -> Dict[str, List[float]]:
     """
     Loads data, trains a scikit-learn model, and returns test scores for the model checkpoint with the highest validation score.
 
@@ -264,19 +302,25 @@ def run_sklearn(args: SklearnTrainArgs,
     else:
         debug = info = print
 
-    debug('Loading data')
-    data = get_data(path=args.data_path,
-                    smiles_columns=args.smiles_columns,
-                    target_columns=args.target_columns)
-    args.task_names = get_task_names(path=args.data_path,
-                                     smiles_columns=args.smiles_columns,
-                                     target_columns=args.target_columns,
-                                     ignore_columns=args.ignore_columns)
+    debug("Loading data")
+    data = get_data(
+        path=args.data_path,
+        smiles_columns=args.smiles_columns,
+        target_columns=args.target_columns,
+    )
+    args.task_names = get_task_names(
+        path=args.data_path,
+        smiles_columns=args.smiles_columns,
+        target_columns=args.target_columns,
+        ignore_columns=args.ignore_columns,
+    )
 
-    if args.model_type == 'svm' and data.num_tasks() != 1:
-        raise ValueError(f'SVM can only handle single-task data but found {data.num_tasks()} tasks')
+    if args.model_type == "svm" and data.num_tasks() != 1:
+        raise ValueError(
+            f"SVM can only handle single-task data but found {data.num_tasks()} tasks"
+        )
 
-    debug(f'Splitting data with seed {args.seed}')
+    debug(f"Splitting data with seed {args.seed}")
     # Need to have val set so that train and test sets are the same as when doing MPN
     train_data, _, test_data = split_data(
         data=data,
@@ -284,7 +328,7 @@ def run_sklearn(args: SklearnTrainArgs,
         seed=args.seed,
         sizes=args.split_sizes,
         num_folds=args.num_folds,
-        args=args
+        args=args,
     )
 
     if args.save_smiles_splits:
@@ -298,27 +342,40 @@ def run_sklearn(args: SklearnTrainArgs,
             smiles_columns=args.smiles_columns,
         )
 
-    debug(f'Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}')
+    debug(
+        f"Total size = {len(data):,} | train size = {len(train_data):,} | test size = {len(test_data):,}"
+    )
 
-    debug('Computing morgan fingerprints')
-    morgan_fingerprint = get_features_generator('morgan')
+    debug("Computing morgan fingerprints")
+    morgan_fingerprint = get_features_generator("morgan")
     for dataset in [train_data, test_data]:
         for datapoint in tqdm(dataset, total=len(dataset)):
             for s in datapoint.smiles:
-                datapoint.extend_features(morgan_fingerprint(mol=s, radius=args.radius, num_bits=args.num_bits))
+                datapoint.extend_features(
+                    morgan_fingerprint(
+                        mol=s, radius=args.radius, num_bits=args.num_bits
+                    )
+                )
 
-    debug('Building model')
-    if args.dataset_type == 'regression':
-        if args.model_type == 'random_forest':
-            model = RandomForestRegressor(n_estimators=args.num_trees, n_jobs=-1, random_state=args.seed)
-        elif args.model_type == 'svm':
+    debug("Building model")
+    if args.dataset_type == "regression":
+        if args.model_type == "random_forest":
+            model = RandomForestRegressor(
+                n_estimators=args.num_trees, n_jobs=-1, random_state=args.seed
+            )
+        elif args.model_type == "svm":
             model = SVR()
         else:
             raise ValueError(f'Model type "{args.model_type}" not supported')
-    elif args.dataset_type == 'classification':
-        if args.model_type == 'random_forest':
-            model = RandomForestClassifier(n_estimators=args.num_trees, n_jobs=-1, class_weight=args.class_weight, random_state=args.seed)
-        elif args.model_type == 'svm':
+    elif args.dataset_type == "classification":
+        if args.model_type == "random_forest":
+            model = RandomForestClassifier(
+                n_estimators=args.num_trees,
+                n_jobs=-1,
+                class_weight=args.class_weight,
+                random_state=args.seed,
+            )
+        elif args.model_type == "svm":
             model = SVC()
         else:
             raise ValueError(f'Model type "{args.model_type}" not supported')
@@ -329,7 +386,7 @@ def run_sklearn(args: SklearnTrainArgs,
 
     model.train_args = args.as_dict()
 
-    debug('Training')
+    debug("Training")
     if args.single_task:
         scores = single_task_sklearn(
             model=model,
@@ -337,7 +394,7 @@ def run_sklearn(args: SklearnTrainArgs,
             test_data=test_data,
             metrics=args.metrics,
             args=args,
-            logger=logger
+            logger=logger,
         )
     else:
         scores = multi_task_sklearn(
@@ -346,11 +403,11 @@ def run_sklearn(args: SklearnTrainArgs,
             test_data=test_data,
             metrics=args.metrics,
             args=args,
-            logger=logger
+            logger=logger,
         )
 
     for metric in args.metrics:
-        info(f'Test {metric} = {np.nanmean(scores[metric])}')
+        info(f"Test {metric} = {np.nanmean(scores[metric])}")
 
     return scores
 

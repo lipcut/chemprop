@@ -14,8 +14,15 @@ from chemprop.models import MoleculeModel
 from chemprop.nn_utils import param_count
 from chemprop.train import cross_validate, run_training
 from chemprop.utils import create_logger, makedirs, timeit
-from chemprop.hyperopt_utils import merge_trials, load_trials, save_trials, \
-    get_hyperopt_seed, load_manual_trials, build_search_space, save_config
+from chemprop.hyperopt_utils import (
+    merge_trials,
+    load_trials,
+    save_trials,
+    get_hyperopt_seed,
+    load_manual_trials,
+    build_search_space,
+    save_config,
+)
 
 
 @timeit(logger_name=HYPEROPT_LOGGER_NAME)

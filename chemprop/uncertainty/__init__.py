@@ -4,11 +4,11 @@ from .uncertainty_predictor import build_uncertainty_predictor, UncertaintyPredi
 from .uncertainty_evaluator import build_uncertainty_evaluator, UncertaintyEvaluator
 
 __all__ = [
-    'UncertaintyEstimator',
-    'build_uncertainty_calibrator',
-    'UncertaintyCalibrator',
-    'build_uncertainty_predictor',
-    'UncertaintyPredictor',
-    'build_uncertainty_evaluator',
-    'UncertaintyEvaluator'
+    "UncertaintyEstimator",
+    "build_uncertainty_calibrator",
+    "UncertaintyCalibrator",
+    "build_uncertainty_predictor",
+    "UncertaintyPredictor",
+    "build_uncertainty_evaluator",
+    "UncertaintyEvaluator",
 ]

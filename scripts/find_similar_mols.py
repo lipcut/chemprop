@@ -13,7 +13,9 @@ from rdkit import Chem
 import numpy as np
 from scipy.spatial.distance import cdist
 from tqdm import tqdm
-from tap import Tap  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
+from tap import (
+    Tap,
+)  # pip install typed-argument-parser (https://github.com/swansonk14/typed-argument-parser)
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
@@ -28,20 +30,24 @@ class Args(Tap):
     test_path: str  # Path to CSV file with test set of molecules
     train_path: str  # Path to CSV file with train set of molecules
     save_path: str  # Path to CSV file where similar molecules will be saved
-    distance_measure: Literal['embedding', 'morgan', 'tanimoto'] = 'embedding'  # Distance measure to use to find nearest neighbors in train set
+    distance_measure: Literal[
+        "embedding", "morgan", "tanimoto"
+    ] = "embedding"  # Distance measure to use to find nearest neighbors in train set
     checkpoint_path: str = None  # Path to .pt file containing a model checkpoint (only needed for distance_measure == "embedding")
     num_neighbors: int = 5  # Number of neighbors to search for each molecule
     batch_size: int = 50  # Batch size when making predictions
-    smiles_column: str = None # Columns in dataset CSV file containing SMILES
-    num_workers: int = 8 # Number of workers used to build batches.
+    smiles_column: str = None  # Columns in dataset CSV file containing SMILES
+    num_workers: int = 8  # Number of workers used to build batches.
 
 
-def find_similar_mols(test_smiles: List[str],
-                      train_smiles: List[str],
-                      distance_measure: str,
-                      model: MoleculeModel = None,
-                      num_neighbors: int = None,
-                      batch_size: int = 50) -> List[OrderedDict]:
+def find_similar_mols(
+    test_smiles: List[str],
+    train_smiles: List[str],
+    distance_measure: str,
+    model: MoleculeModel = None,
+    num_neighbors: int = None,
+    batch_size: int = 50,
+) -> List[OrderedDict]:
     """
     For each test molecule, finds the N most similar training molecules according to some distance measure.
 
@@ -60,48 +66,64 @@ def find_similar_mols(test_smiles: List[str],
 
     # Create data loader
     test_data_loader = MoleculeDataLoader(
-        dataset=test_data,
-        batch_size=batch_size,
-        num_workers=args.num_workers
+        dataset=test_data, batch_size=batch_size, num_workers=args.num_workers
     )
     train_data_loader = MoleculeDataLoader(
-        dataset=train_data,
-        batch_size=batch_size,
-        num_workers=args.num_workers
+        dataset=train_data, batch_size=batch_size, num_workers=args.num_workers
     )
 
-    print(f'Computing {distance_measure} vectors')
-    if distance_measure == 'embedding':
+    print(f"Computing {distance_measure} vectors")
+    if distance_measure == "embedding":
         assert model is not None
-        test_vecs = np.array(model_fingerprint(model=model, data_loader=test_data_loader, fingerprint_type='last_FFN'))
-        train_vecs = np.array(model_fingerprint(model=model, data_loader=train_data_loader, fingerprint_type='last_FFN'))
-        metric = 'cosine'
-    elif distance_measure == 'morgan':
-        test_vecs = np.array([morgan_binary_features_generator(smiles) for smiles in tqdm(test_smiles, total=len(test_smiles))])
-        train_vecs = np.array([morgan_binary_features_generator(smiles) for smiles in tqdm(train_smiles, total=len(train_smiles))])
-        metric = 'jaccard'
-    elif distance_measure == 'tanimoto':
+        test_vecs = np.array(
+            model_fingerprint(
+                model=model, data_loader=test_data_loader, fingerprint_type="last_FFN"
+            )
+        )
+        train_vecs = np.array(
+            model_fingerprint(
+                model=model, data_loader=train_data_loader, fingerprint_type="last_FFN"
+            )
+        )
+        metric = "cosine"
+    elif distance_measure == "morgan":
+        test_vecs = np.array(
+            [
+                morgan_binary_features_generator(smiles)
+                for smiles in tqdm(test_smiles, total=len(test_smiles))
+            ]
+        )
+        train_vecs = np.array(
+            [
+                morgan_binary_features_generator(smiles)
+                for smiles in tqdm(train_smiles, total=len(train_smiles))
+            ]
+        )
+        metric = "jaccard"
+    elif distance_measure == "tanimoto":
         # Generate RDKit topological fingerprints
         test_fps = [Chem.RDKFingerprint(m.mol[0]) for m in tqdm(test_data)]
         train_fps = [Chem.RDKFingerprint(m.mol[0]) for m in tqdm(train_data)]
 
         # Compute pairwise similarity
-        print('Computing distances')
+        print("Computing distances")
         similarity = np.zeros([len(test_fps), len(train_fps)])
         for (x, y), _ in np.ndenumerate(similarity):
-            similarity[x, y] = DataStructs.FingerprintSimilarity(test_fps[x], train_fps[y])
+            similarity[x, y] = DataStructs.FingerprintSimilarity(
+                test_fps[x], train_fps[y]
+            )
 
         # Convert the tanimoto similarity to a distance
         distances = 1 - similarity
-        metric = 'tanimoto'
+        metric = "tanimoto"
     else:
         raise ValueError(f'Distance measure "{distance_measure}" not supported.')
 
-    if distance_measure in ('embedding', 'morgan'):
-        print('Computing distances')
+    if distance_measure in ("embedding", "morgan"):
+        print("Computing distances")
         distances = cdist(test_vecs, train_vecs, metric=metric)
 
-    print('Finding neighbors')
+    print("Finding neighbors")
     neighbors = []
     for test_index, test_smile in enumerate(test_smiles):
         # Find the num_neighbors molecules in the training set which are most similar to the test molecule
@@ -109,25 +131,29 @@ def find_similar_mols(test_smiles: List[str],
 
         # Build dictionary with distance info
         neighbor = OrderedDict()
-        neighbor['test_smiles'] = test_smile
-        neighbor['test_in_train'] = test_smile in train_smiles_set
+        neighbor["test_smiles"] = test_smile
+        neighbor["test_in_train"] = test_smile in train_smiles_set
 
         for i, train_index in enumerate(nearest_train_indices):
-            neighbor[f'train_{i + 1}_smiles'] = train_smiles[train_index]
-            neighbor[f'train_{i + 1}_{distance_measure}_{metric}_distance'] = distances[test_index][train_index]
+            neighbor[f"train_{i + 1}_smiles"] = train_smiles[train_index]
+            neighbor[f"train_{i + 1}_{distance_measure}_{metric}_distance"] = distances[
+                test_index
+            ][train_index]
 
         neighbors.append(neighbor)
 
     return neighbors
 
 
-def find_similar_mols_from_file(test_path: str,
-                                train_path: str,
-                                distance_measure: str,
-                                checkpoint_path: str = None,
-                                num_neighbors: int = -1,
-                                batch_size: int = 50,
-                                smiles_column: str = None) -> List[OrderedDict]:
+def find_similar_mols_from_file(
+    test_path: str,
+    train_path: str,
+    distance_measure: str,
+    checkpoint_path: str = None,
+    num_neighbors: int = -1,
+    batch_size: int = 50,
+    smiles_column: str = None,
+) -> List[OrderedDict]:
     """
     For each test molecule, finds the N most similar training molecules according to some distance measure.
     Loads molecules and model from file.
@@ -141,11 +167,13 @@ def find_similar_mols_from_file(test_path: str,
     :return: A list of OrderedDicts containing the test smiles, the num_neighbors nearest training smiles,
     and other relevant distance info.
     """
-    print('Loading data')
-    test_smiles, train_smiles = get_smiles(test_path, flatten=True, smiles_columns=smiles_column), get_smiles(train_path, flatten=True, smiles_columns=smiles_column)
+    print("Loading data")
+    test_smiles, train_smiles = get_smiles(
+        test_path, flatten=True, smiles_columns=smiles_column
+    ), get_smiles(train_path, flatten=True, smiles_columns=smiles_column)
 
     if checkpoint_path is not None:
-        print('Loading model')
+        print("Loading model")
         model = load_checkpoint(checkpoint_path)
     else:
         model = None
@@ -156,18 +184,20 @@ def find_similar_mols_from_file(test_path: str,
         distance_measure=distance_measure,
         model=model,
         num_neighbors=num_neighbors,
-        batch_size=batch_size
+        batch_size=batch_size,
     )
 
 
-def save_similar_mols(test_path: str,
-                      train_path: str,
-                      save_path: str,
-                      distance_measure: str,
-                      checkpoint_path: str = None,
-                      num_neighbors: int = None,
-                      batch_size: int = 50,
-                      smiles_column: str = None):
+def save_similar_mols(
+    test_path: str,
+    train_path: str,
+    save_path: str,
+    distance_measure: str,
+    checkpoint_path: str = None,
+    num_neighbors: int = None,
+    batch_size: int = 50,
+    smiles_column: str = None,
+):
     """
     For each test molecule, finds the N most similar training molecules according to some distance measure.
     Loads molecules and model from file and saves results to file.
@@ -197,14 +227,14 @@ def save_similar_mols(test_path: str,
     # Save results
     makedirs(save_path, isfile=True)
 
-    with open(save_path, 'w') as f:
+    with open(save_path, "w") as f:
         writer = csv.DictWriter(f, fieldnames=similar_mols[0].keys())
         writer.writeheader()
         for row in similar_mols:
             writer.writerow(row)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = Args().parse_args()
 
     save_similar_mols(

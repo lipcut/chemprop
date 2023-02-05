@@ -32,12 +32,16 @@ def build_search_space(search_parameters: List[str], train_epochs: int = None) -
         "dropout": hp.quniform("dropout", low=0.0, high=0.4, q=0.05),
         "ffn_hidden_size": hp.quniform("ffn_hidden_size", low=300, high=2400, q=100),
         "ffn_num_layers": hp.quniform("ffn_num_layers", low=1, high=3, q=1),
-        "final_lr_ratio": hp.loguniform("final_lr_ratio", low=np.log(1e-4), high=0.),
+        "final_lr_ratio": hp.loguniform("final_lr_ratio", low=np.log(1e-4), high=0.0),
         "hidden_size": hp.quniform("hidden_size", low=300, high=2400, q=100),
-        "init_lr_ratio": hp.loguniform("init_lr_ratio", low=np.log(1e-4), high=0.),
-        "linked_hidden_size": hp.quniform("linked_hidden_size", low=300, high=2400, q=100),
+        "init_lr_ratio": hp.loguniform("init_lr_ratio", low=np.log(1e-4), high=0.0),
+        "linked_hidden_size": hp.quniform(
+            "linked_hidden_size", low=300, high=2400, q=100
+        ),
         "max_lr": hp.loguniform("max_lr", low=np.log(1e-6), high=np.log(1e-2)),
-        "warmup_epochs": hp.quniform("warmup_epochs", low=1, high=train_epochs // 2, q=1)
+        "warmup_epochs": hp.quniform(
+            "warmup_epochs", low=1, high=train_epochs // 2, q=1
+        ),
     }
     space = {}
     for key in search_parameters:

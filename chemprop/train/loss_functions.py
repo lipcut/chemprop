@@ -72,7 +72,9 @@ def bounded_mse_loss(
     :param greater_than_target: A tensor with boolean values indicating whether the target is a greater-than inequality.
     :return: A tensor containing loss values of shape(batch_size, tasks).
     """
-    predictions = torch.where(torch.logical_and(predictions < targets, less_than_target), targets, predictions)
+    predictions = torch.where(
+        torch.logical_and(predictions < targets, less_than_target), targets, predictions
+    )
 
     predictions = torch.where(
         torch.logical_and(predictions > targets, greater_than_target),
@@ -104,7 +106,9 @@ def mcc_class_loss(
     FP = torch.sum((1 - targets) * predictions * data_weights * mask, axis=0)
     FN = torch.sum(targets * (1 - predictions) * data_weights * mask, axis=0)
     TN = torch.sum((1 - targets) * (1 - predictions) * data_weights * mask, axis=0)
-    loss = 1 - ((TP * TN - FP * FN) / torch.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)))
+    loss = 1 - (
+        (TP * TN - FP * FN) / torch.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+    )
     return loss
 
 
@@ -135,10 +139,16 @@ def mcc_multiclass_loss(
 
     masked_data_weights = data_weights * mask
 
-    t_sum = torch.sum(bin_targets * masked_data_weights, axis=0)  # number of times each class truly occurred
-    p_sum = torch.sum(bin_preds * masked_data_weights, axis=0)  # number of times each class was predicted
+    t_sum = torch.sum(
+        bin_targets * masked_data_weights, axis=0
+    )  # number of times each class truly occurred
+    p_sum = torch.sum(
+        bin_preds * masked_data_weights, axis=0
+    )  # number of times each class was predicted
 
-    n_correct = torch.sum(bin_preds * bin_targets * masked_data_weights)  # total number of samples correctly predicted
+    n_correct = torch.sum(
+        bin_preds * bin_targets * masked_data_weights
+    )  # total number of samples correctly predicted
     n_samples = torch.sum(predictions * masked_data_weights)  # total number of samples
 
     cov_ytyp = n_correct * n_samples - torch.dot(p_sum, t_sum)
@@ -177,17 +187,21 @@ def sid_loss(
     one_sub = torch.ones_like(model_spectra, device=torch_device)
     if threshold is not None:
         threshold_sub = torch.full(model_spectra.shape, threshold, device=torch_device)
-        model_spectra = torch.where(model_spectra < threshold, threshold_sub, model_spectra)
+        model_spectra = torch.where(
+            model_spectra < threshold, threshold_sub, model_spectra
+        )
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)
     model_spectra = torch.div(model_spectra, sum_model_spectra)
 
     # Calculate loss value
     target_spectra = torch.where(mask, target_spectra, one_sub)
-    model_spectra = torch.where(mask, model_spectra, one_sub)  # losses in excluded regions will be zero because log(1/1) = 0.
-    loss = torch.mul(torch.log(torch.div(model_spectra, target_spectra)), model_spectra) + torch.mul(
-        torch.log(torch.div(target_spectra, model_spectra)), target_spectra
-    )
+    model_spectra = torch.where(
+        mask, model_spectra, one_sub
+    )  # losses in excluded regions will be zero because log(1/1) = 0.
+    loss = torch.mul(
+        torch.log(torch.div(model_spectra, target_spectra)), model_spectra
+    ) + torch.mul(torch.log(torch.div(target_spectra, model_spectra)), target_spectra)
 
     return loss
 
@@ -214,7 +228,9 @@ def wasserstein_loss(
     zero_sub = torch.zeros_like(model_spectra, device=torch_device)
     if threshold is not None:
         threshold_sub = torch.full(model_spectra.shape, threshold, device=torch_device)
-        model_spectra = torch.where(model_spectra < threshold, threshold_sub, model_spectra)
+        model_spectra = torch.where(
+            model_spectra < threshold, threshold_sub, model_spectra
+        )
     model_spectra = torch.where(mask, model_spectra, zero_sub)
     sum_model_spectra = torch.sum(model_spectra, axis=1, keepdim=True)
     model_spectra = torch.div(model_spectra, sum_model_spectra)
@@ -239,7 +255,9 @@ def normal_mve(pred_values, targets):
     # Unpack combined prediction values
     pred_means, pred_var = torch.split(pred_values, pred_values.shape[1] // 2, dim=1)
 
-    return torch.log(2 * np.pi * pred_var) / 2 + (pred_means - targets) ** 2 / (2 * pred_var)
+    return torch.log(2 * np.pi * pred_var) / 2 + (pred_means - targets) ** 2 / (
+        2 * pred_var
+    )
 
 
 # evidential classification
@@ -305,7 +323,9 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     S_alpha = torch.sum(alpha_hat, dim=-1, keepdim=True)
     S_beta = torch.sum(beta, dim=-1, keepdim=True)
 
-    ln_alpha = torch.lgamma(S_alpha) - torch.sum(torch.lgamma(alpha_hat), dim=-1, keepdim=True)
+    ln_alpha = torch.lgamma(S_alpha) - torch.sum(
+        torch.lgamma(alpha_hat), dim=-1, keepdim=True
+    )
     ln_beta = torch.sum(torch.lgamma(beta), dim=-1, keepdim=True) - torch.lgamma(S_beta)
 
     # digamma terms
@@ -313,7 +333,11 @@ def dirichlet_common_loss(alphas, y_one_hot, lam=0):
     dg_S_alpha = torch.digamma(S_alpha)
 
     # KL
-    KL = ln_alpha + ln_beta + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+    KL = (
+        ln_alpha
+        + ln_beta
+        + torch.sum((alpha_hat - beta) * (dg_alpha - dg_S_alpha), dim=-1, keepdim=True)
+    )
 
     KL = lam * KL
 
